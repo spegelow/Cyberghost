@@ -9,6 +9,6 @@ public class BattleUnitUI : MonoBehaviour
 
     public void UpdateUI(UnitManager unitManager)
     {
-        battleUnitUI.text = "" + unitManager.data.unitName + " Health " + unitManager.currentHealth + "/ " + unitManager.data.baseHealth + "/nAction Cooldown: " + unitManager.actionCooldown;
+        battleUnitUI.text = "" + unitManager.data.unitName + " Health " + unitManager.currentHealth + "/" + unitManager.data.baseHealth + "\nAction Cooldown: " + unitManager.actionCooldown;
     }
 }

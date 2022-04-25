@@ -9,13 +9,29 @@ public class UnitManager : MonoBehaviour
     public int actionCooldown;
 
     public bool isPlayer;
+    public int teamID;
+
+    public BattleUnitUI unitUI;
 
     public void Initialize(UnitData data)
     {
         this.data = data;
         currentHealth = data.baseHealth;
         actionCooldown = data.startingActionCooldown;
-}
+        unitUI.UpdateUI(this);
+    }
+
+    public void AdjustHealth(int amount)
+    {
+        currentHealth += amount;
+        unitUI.UpdateUI(this);
+    }
+
+    public void AdjustActionCooldown(int timeUnits)
+    {
+        actionCooldown += timeUnits;
+        unitUI.UpdateUI(this);
+    }
 
     // Start is called before the first frame update
     void Start()

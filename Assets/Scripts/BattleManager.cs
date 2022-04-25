@@ -24,17 +24,21 @@ public class BattleManager : MonoBehaviour
         foreach(UnitData ud in playerUnits)
         {
             UnitManager newUnit = GameObject.Instantiate(unitPrefab, this.unitParent).GetComponent<UnitManager>();
+            newUnit.transform.position = new Vector3(units.Count * 5 - 2, -3, 0);
             newUnit.gameObject.name = (units.Count + 1) + "-" + ud.unitName;
             newUnit.Initialize(ud);
             newUnit.isPlayer = true;
+            newUnit.teamID = 0;
             units.Add(newUnit);
         }
 
         foreach (UnitData ud in enemyUnits)
         {
             UnitManager newUnit = GameObject.Instantiate(unitPrefab, this.unitParent).GetComponent<UnitManager>();
+            newUnit.transform.position = new Vector3((units.Count - playerUnits.Count)*5 - 2, 2, 0);
             newUnit.gameObject.name = (units.Count + 1 - playerUnits.Count) + "-" + ud.unitName; 
             newUnit.Initialize(ud);
+            newUnit.teamID = 1;
             units.Add(newUnit);
         }
 
@@ -43,7 +47,7 @@ public class BattleManager : MonoBehaviour
 
     public IEnumerator StartRound()
     {
-        Debug.Log("Round Start");
+        //Debug.Log("Round Start");
         yield return new WaitForEndOfFrame();
         StartCoroutine(ResolveNextTurn());
     }
@@ -52,12 +56,12 @@ public class BattleManager : MonoBehaviour
 
     public IEnumerator EndRound()
     {
-        Debug.Log("Round End");
+        //Debug.Log("Round End");
         yield return new WaitForEndOfFrame();
         //Reduce the action cooldown for every unit
         foreach (UnitManager u in units)
         {
-            u.actionCooldown -= 1;
+            u.AdjustActionCooldown(-1);
         }
 
         yield return new WaitForSeconds(1);
@@ -102,22 +106,7 @@ public class BattleManager : MonoBehaviour
         {
             //Pick a random action to use
             ActionData actionToUse = unit.data.actions[Random.Range(0, unit.data.actions.Count)];
-            Debug.Log(actionToUse.actionName + " used!");
-
-            //Pick a random target
-            //TODO
-
-            //Apply damage from the attack
-            //TODO
-
-            //Adjust the action cooldown
-            unit.actionCooldown += actionToUse.timeUnits;
-
-            //Clear active unit
-            activeUnit = null;
-
-            //Then start the next turn
-            StartCoroutine(ResolveNextTurn());
+            instance.StartCoroutine(instance.ResolveTurnAction(actionToUse));
         }
     }
 
@@ -128,27 +117,26 @@ public class BattleManager : MonoBehaviour
 
         //Should we make sure the action is valid???
 
-        //TODO CLEAN UP
-        //For now have the player use the action against a random enemy
-        Debug.Log(action.actionName + " used!");
-
-        //Pick a random target
-        //TODO
-
-        //Apply damage from the attack
-        //TODO
-
-        //Adjust the action cooldown
-        instance.activeUnit.actionCooldown += action.timeUnits;
-
-        //Clear active unit
-        instance.activeUnit = null;
-
-        //Then start the next turn
-        instance.StartCoroutine(instance.ResolveNextTurn());
+        instance.StartCoroutine(instance.ResolveTurnAction(action));
     }
 
+    public IEnumerator ResolveTurnAction(ActionData action)
+    {
+        //Pick a random target
+        UnitManager target = GetRandomOpponent(activeUnit);
 
+        //Apply damage from the attack
+        yield return action.ResolveAction(activeUnit, target);
+
+        //Adjust the action cooldown
+        activeUnit.AdjustActionCooldown(action.timeUnits);
+
+        //Clear active unit
+        activeUnit = null;
+
+        //Then start the next turn
+        StartCoroutine(ResolveNextTurn());
+    }
 
 
     // Start is called before the first frame update
@@ -164,5 +152,14 @@ public class BattleManager : MonoBehaviour
     void Update()
     {
         
+    }
+
+
+
+    public UnitManager GetRandomOpponent(UnitManager unit)
+    {
+        List<UnitManager> enemies = units.FindAll(u => u.teamID != unit.teamID);
+
+        return enemies[Random.Range(0, enemies.Count)];
     }
 }
