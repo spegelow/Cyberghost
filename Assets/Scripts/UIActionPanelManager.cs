@@ -12,7 +12,7 @@ public class UIActionPanelManager : MonoBehaviour
     {
         //Destroy any existing buttons
         actionButtons.ForEach(ab => Destroy(ab.gameObject));
-
+        actionButtons.Clear();
         //Create a new button for each action from the player grid
         foreach(ActionData a in actions)
         {

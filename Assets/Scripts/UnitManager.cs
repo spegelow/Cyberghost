@@ -11,12 +11,15 @@ public class UnitManager : MonoBehaviour
     public bool isPlayer;
     public int teamID;
 
+    private bool isAlive;
+
     public BattleUnitUI unitUI;
 
     public void Initialize(UnitData data)
     {
         this.data = data;
         currentHealth = data.baseHealth;
+        isAlive = true;
         actionCooldown = data.startingActionCooldown;
         unitUI.UpdateUI(this);
     }
@@ -24,6 +27,9 @@ public class UnitManager : MonoBehaviour
     public void AdjustHealth(int amount)
     {
         currentHealth += amount;
+
+        currentHealth = Mathf.Clamp(currentHealth, 0, data.baseHealth);
+
         unitUI.UpdateUI(this);
     }
 
@@ -31,6 +37,22 @@ public class UnitManager : MonoBehaviour
     {
         actionCooldown += timeUnits;
         unitUI.UpdateUI(this);
+    }
+
+    public void OnMouseDown()
+    {
+        BattleManager.UnitClicked(this);
+    }
+
+    public bool IsAlive()
+    {
+        return isAlive;
+    }
+
+    public void HandleDeath()
+    {
+        isAlive = false;
+        this.gameObject.SetActive(false);
     }
 
     // Start is called before the first frame update

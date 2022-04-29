@@ -14,9 +14,10 @@ public class BattleManager : MonoBehaviour
 
     public List<UnitManager> units;
 
-
     public UnitManager activeUnit;
 
+    private ActionData selectedAction;
+    private bool targeting;
 
     public void Initialize()
     {
@@ -61,7 +62,10 @@ public class BattleManager : MonoBehaviour
         //Reduce the action cooldown for every unit
         foreach (UnitManager u in units)
         {
-            u.AdjustActionCooldown(-1);
+            if (u.IsAlive())
+            {
+                u.AdjustActionCooldown(-1);
+            }
         }
 
         yield return new WaitForSeconds(1);
@@ -71,23 +75,32 @@ public class BattleManager : MonoBehaviour
 
     public IEnumerator ResolveNextTurn()
     {
-        //Get any units that are able to act this turn
-        List<UnitManager> unitsAbleToAct = units.FindAll(u => u.actionCooldown <= 0);
+        //Check for deaths and remove any dead units
+        HandleDeaths();
 
-        //There is a unit, so have them take their turn
-        if (unitsAbleToAct.Count > 0)
+        if (!IsBattleDone())
         {
-            activeUnit = unitsAbleToAct[0];
-            unitsAbleToAct.RemoveAt(0);
+            //Get any units that are able to act this turn
+            List<UnitManager> unitsAbleToAct = units.FindAll(u => u.actionCooldown <= 0 && u.currentHealth > 0);
 
-            //Have this unit take their turn
-            yield return ResolveTurn(activeUnit);
+            //There is a unit, so have them take their turn
+            if (unitsAbleToAct.Count > 0)
+            {
+                activeUnit = unitsAbleToAct[0];
+                unitsAbleToAct.RemoveAt(0);
+
+                //Have this unit take their turn
+                yield return ResolveTurn(activeUnit);
+            }
+            else //No units left so end the round
+            {
+                StartCoroutine(EndRound());
+            }
         }
-        else //No units left so end the round
+        else
         {
-
-            StartCoroutine(EndRound());
-        }
+            Debug.Log("Battle Is Over!!!!");
+        }    
     }
 
 
@@ -106,7 +119,11 @@ public class BattleManager : MonoBehaviour
         {
             //Pick a random action to use
             ActionData actionToUse = unit.data.actions[Random.Range(0, unit.data.actions.Count)];
-            instance.StartCoroutine(instance.ResolveTurnAction(actionToUse));
+
+            //Pick a random target
+            UnitManager target = GetRandomOpponent(activeUnit); 
+            
+            instance.StartCoroutine(instance.ResolveTurnAction(actionToUse, target));
         }
     }
 
@@ -116,14 +133,56 @@ public class BattleManager : MonoBehaviour
         instance.uiActionPanel.HidePanel();
 
         //Should we make sure the action is valid???
-
-        instance.StartCoroutine(instance.ResolveTurnAction(action));
+        //TODO
+        instance.selectedAction = action;
+        instance.targeting = true;
     }
 
-    public IEnumerator ResolveTurnAction(ActionData action)
+    public static void UnitClicked(UnitManager unit)
     {
-        //Pick a random target
-        UnitManager target = GetRandomOpponent(activeUnit);
+        if(instance.targeting)
+        {
+            //TODO Check for valid target
+            instance.targeting = false;
+            instance.StartCoroutine(instance.ResolveTurnAction(instance.selectedAction, unit));
+        }
+    }
+
+    public void HandleDeaths()
+    {
+        foreach (UnitManager u in units)
+        {
+            if (u.IsAlive() && u.currentHealth <= 0)
+            {
+                //This unit has no health left but isn't dead yet, soooo process its death
+                u.HandleDeath();
+            }
+        }
+    }
+
+    public bool IsBattleDone()
+    {
+        int teamRemaining = -1;
+        foreach (UnitManager u in units)
+        {
+            if (u.IsAlive())
+            {
+                if (teamRemaining == -1)
+                {
+                    teamRemaining = u.teamID;
+                }
+                else if (teamRemaining != u.teamID)
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    public IEnumerator ResolveTurnAction(ActionData action, UnitManager target)
+    {
 
         //Apply damage from the attack
         yield return action.ResolveAction(activeUnit, target);
@@ -151,7 +210,12 @@ public class BattleManager : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        
+        if(targeting && Input.GetMouseButtonDown(1))
+        {
+            targeting = false;
+            selectedAction = null;
+            uiActionPanel.Initialize(activeUnit.data.actions);
+        }
     }
 
 
